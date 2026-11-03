@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkAi</title>
+  <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+
+  <!-- STATUS BAR -->
+  <div class="sk-status-bar" id="status-bar">
+    <svg class="sk-hex-logo" width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="12,2 21,7 21,17 12,22 3,17 3,7" fill="none" stroke="#f0a500" stroke-width="1.5" stroke-linejoin="round"/>
+      <text x="12" y="16" text-anchor="middle" fill="#f0a500" font-size="9" font-family="monospace" font-weight="bold">K</text>
+    </svg>
+    <span class="sk-status-dot" id="status-dot"></span>
+    <span class="sk-status-text" id="status-text">Connessione ad Ollama...</span>
+    <div class="sk-status-controls">
+      <button class="sk-btn-icon" id="btn-clear" title="Nuova sessione">✕</button>
+    </div>
+  </div>
+
+  <!-- SESSIONS PANEL -->
+  <div class="sk-sessions" id="sessions-panel" style="display:none">
+    <div class="sk-sessions-header">
+      <span>Tab aperte</span>
+      <span class="sk-sessions-count" id="sessions-count">0</span>
+    </div>
+    <div class="sk-sessions-list" id="sessions-list"></div>
+  </div>
+
+  <!-- CHAT AREA -->
+  <div class="sk-chat" id="chat-area">
+    <div class="sk-welcome" id="welcome-msg">
+      <p>Ciao, sono SkAi.</p>
+    </div>
+  </div>
+
+  <!-- ERROR OVERLAY — mostrato se nessun modello è disponibile -->
+  <div class="sk-error-overlay" id="error-overlay" style="display:none">
+    <button class="sk-error-close" id="error-close" title="Chiudi">✕</button>
+    <div class="sk-error-body">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <p>AI features are disabled. It looks like you turned off AI in the skai settings. Without a selected model, skai cannot function.</p>
+    </div>
+  </div>
+
+  <!-- INPUT AREA -->
+  <div class="sk-input-area">
+    <div class="sk-input-row">
+      <textarea
+        class="sk-input"
+        id="user-input"
+        placeholder="Scrivi a SkAi..."
+        rows="1"
+        autofocus
+      ></textarea>
+      <button class="sk-send-btn" id="send-btn" title="Invia (Ctrl+Enter)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+    <div class="sk-input-meta">
+      <span class="sk-model-label" id="model-label">caricamento...</span>
+      <span class="sk-shortcut">Ctrl+Enter</span>
+    </div>
+  </div>
+
+  <script src="sidebar.js"></script>
+</body>
+</html>

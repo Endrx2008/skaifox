@@ -1,0 +1,71 @@
+{
+  "manifest_version": 2,
+  "name": "SkAi",
+  "version": "1.6",
+  "description": "AI browser agent via Ollama \u2014 usa automaticamente il modello pi\u00f9 pesante installato \u2014 parte di SkAi",
+  "author": "SkAi",
+  "icons": {
+    "16": "icons/skorpion-16.png",
+    "32": "icons/skorpion-32.png",
+    "48": "icons/skorpion-48.png",
+    "96": "icons/skorpion-96.png",
+    "128": "icons/skorpion-128.png"
+  },
+  "permissions": [
+    "tabs",
+    "activeTab",
+    "storage",
+    "webNavigation",
+    "history",
+    "bookmarks",
+    "notifications",
+    "<all_urls>",
+    "http://localhost:11434/*"
+  ],
+  "background": {
+    "scripts": [
+      "src/shared/constants.js",
+      "src/shared/ollama.js",
+      "src/background/background.js"
+    ]
+  },
+  "browser_action": {
+    "default_icon": {
+      "16": "icons/skorpion-16.png",
+      "32": "icons/skorpion-32.png",
+      "48": "icons/skorpion-48.png"
+    },
+    "default_title": "Apri/Chiudi SkAi"
+  },
+  "sidebar_action": {
+    "default_panel": "src/sidebar/sidebar.html",
+    "default_title": "SkAi",
+    "default_icon": {
+      "16": "icons/skorpion-16.png",
+      "32": "icons/skorpion-32.png",
+      "48": "icons/skorpion-48.png"
+    },
+    "open_at_install": false
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "src/content/content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    "src/sidebar/*",
+    "icons/*"
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "skai@skorpion",
+      "strict_min_version": "109.0"
+    }
+  }
+}
