@@ -1,15 +1,15 @@
 # SkAi — Firefox Plugin
 
-Plugin Firefox con AI agent integrata via Ollama (Qwen2.5).
-Parte del progetto **SkAi**.
+Firefox plugin with an integrated AI agent via Ollama (Qwen2.5).
+Part of the **SkAi** project.
 
 ---
 
-## Struttura del progetto
+## Project structure
 
 ```
 skai-firefox/
-├── manifest.json                  ← Manifest WebExtension v2
+├── manifest.json                  ← WebExtension Manifest v2
 ├── icons/
 │   ├── skorpion-16.png
 │   ├── skorpion-32.png
@@ -18,67 +18,67 @@ skai-firefox/
 │   └── skorpion-128.png
 └── src/
     ├── shared/
-    │   ├── constants.js           ← Costanti globali, system prompt, config
-    │   └── ollama.js              ← Client REST per Ollama (streaming)
+    │   ├── constants.js           ← Global constants, system prompt, config
+    │   └── ollama.js              ← REST client for Ollama (streaming)
     ├── background/
-    │   └── background.js          ← Orchestratore — gestisce toggle sidebar e azioni
+    │   └── background.js          ← Orchestrator — handles sidebar toggle and actions
     ├── content/
-    │   └── content.js             ← Iniettato in ogni pagina
+    │   └── content.js             ← Injected into every page
     └── sidebar/
-        ├── sidebar.html           ← UI sidebar
-        ├── sidebar.css            ← Design SkAi
-        └── sidebar.js             ← Logica sidebar
+        ├── sidebar.html           ← Sidebar UI
+        ├── sidebar.css            ← SkAi design
+        └── sidebar.js             ← Sidebar logic
 ```
 
 ---
 
-## Prerequisiti
+## Requirements
 
-1. **Firefox 109+** (supporto Manifest v2 + sidebar_action)
-2. **Ollama** installato e in esecuzione
-3. **Modello Qwen2.5** scaricato:
+1. **Firefox 109+** (Manifest v2 + sidebar_action support)
+2. **Ollama** installed and running
+3. **Qwen2.5 model** downloaded:
    ```bash
    ollama pull qwen2.5:14b
    ```
-   *(oppure `qwen2.5:7b` per macchine meno potenti)*
-4. Ollama deve girare su `localhost:11434` (default)
-   - In SkAi questo è gestito automaticamente
+   *(or `qwen2.5:7b` for less powerful machines)*
+4. Ollama must run on `localhost:11434` (default)
+   - In SkAi this is handled automatically
 
 ---
 
-## Installazione (sviluppo)
+## Installation (development)
 
-1. Apri Firefox e vai su `about:debugging`
-2. Clicca **"Questo Firefox"** (o "This Firefox")
-3. Clicca **"Carica componente aggiuntivo temporaneo"**
-4. Seleziona il file `manifest.json` di questo progetto
+1. Open Firefox and go to `about:debugging`
+2. Click **"This Firefox"**
+3. Click **"Load Temporary Add-on"**
+4. Select this project's `manifest.json` file
 
-### Aprire/chiudere la sidebar
-- **Click sull'icona** 🦂 nella toolbar → apre o chiude la sidebar
-- Oppure: `Visualizza > Sidebar > SkAi`
+### Opening/closing the sidebar
+- **Click the icon** 🦂 in the toolbar → opens or closes the sidebar
+- Or: `View > Sidebar > SkAi`
 
 ---
 
-## Come funziona
+## How it works
 
-### Flusso principale
+### Main flow
 
 ```
-Utente scrive → Sidebar.js → Background.js → Ollama (Qwen2.5)
-                                    ↓
-                           JSON action response
-                                    ↓
-                          Action Router (switch)
-                                    ↓
-             ┌──────────────────────────────────┐
-             │  reply_chat  search  open_tab     │
-             │  navigate    read_page  workflow  │
-             └──────────────────────────────────┘
+User types → Sidebar.js → Background.js → Ollama (Qwen2.5)
+                                 ↓
+                        JSON action response
+                                 ↓
+                       Action Router (switch)
+                                 ↓
+          ┌──────────────────────────────────┐
+          │  reply_chat  search  open_tab     │
+          │  navigate    read_page  workflow  │
+          └──────────────────────────────────┘
 ```
 
 ### JSON Actions
 
-Ollama risponde sempre con un JSON strutturato:
+Ollama always replies with a structured JSON:
 
 ```json
 {
@@ -94,52 +94,31 @@ Ollama risponde sempre con un JSON strutturato:
       "read_after": true
     }
   ],
-  "reasoning": "Cerco info aggiornate sul kernel"
+  "reasoning": "Searching for up-to-date info on the kernel"
 }
 ```
 
-### Tipi di action supportati
+### Supported action types
 
-| Action           | Descrizione                              |
+| Action           | Description                              |
 |------------------|------------------------------------------|
-| `reply_chat`     | Risponde direttamente in chat            |
-| `search`         | Cerca su web (Google/DDG/Brave)          |
-| `open_tab`       | Apre una URL in nuova tab                |
-| `navigate`       | Naviga nella tab corrente                |
-| `read_page`      | Legge/riassume una pagina                |
-| `close_tab`      | Chiude le tab di un topic                |
-| `notify`         | Notifica browser                         |
-| `workflow`       | Lista di azioni annidate (pipeline)      |
+| `reply_chat`     | Replies directly in chat                 |
+| `search`         | Searches the web (Google/DDG/Brave)      |
+| `open_tab`       | Opens a URL in a new tab                 |
+| `navigate`       | Navigates in the current tab             |
+| `read_page`      | Reads/summarizes a page                  |
+| `close_tab`      | Closes the tabs of a topic               |
+| `notify`         | Browser notification                     |
+| `workflow`       | List of nested actions (pipeline)        |
 
 ---
 
-## Configurazione avanzata
+## Advanced configuration
 
-Modifica `src/shared/constants.js` per:
-- Cambiare modello (`OLLAMA_MODEL`)
-- Cambiare porta Ollama (`OLLAMA_BASE_URL`)
-- Personalizzare il system prompt (`SYSTEM_PROMPT`)
-- Aggiungere motori di ricerca (`SEARCH_ENGINES`)
-
----
-
-## Changelog
-
-### v1.0.1
-- ✅ Aggiunto `browser_action`: click sull'icona apre/chiude la sidebar
-- ✅ Fix icona notifiche (`skai-48.svg` → `skorpion-48.png`)
-- ✅ Allineato nome modello a `qwen2.5:14b` ovunque
-- ✅ Streaming parser rifatto: estrazione `reply` robusta senza regex greedy
-- ✅ Manifest: aggiunto `open_at_install: false`
+Edit `src/shared/constants.js` to:
+- Change the model (`OLLAMA_MODEL`)
+- Change the Ollama port (`OLLAMA_BASE_URL`)
+- Customize the system prompt (`SYSTEM_PROMPT`)
+- Add search engines (`SEARCH_ENGINES`)
 
 ---
-
-## Prossimi step (roadmap)
-
-- [ ] Persistenza storia su `browser.storage.local`
-- [ ] Workflow builder visuale
-- [ ] Support multi-modello (selettore in UI)
-- [ ] RAG locale: indicizzazione pagine visitate
-- [ ] Export sessioni di ricerca come markdown
-- [ ] Hotkey globale per aprire la sidebar
-- [ ] Integrazione con altri servizi SkAi
