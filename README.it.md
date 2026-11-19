@@ -39,6 +39,18 @@ solo un avviso con il pulsante **Interrompi**. Dal computer escono solo le ricer
 SKAI. In Skorpion OS Ollama e il modello arrivano dalla procedura guidata di SKAI, e SKAI Manager
 (Alt + F9) li cambia.
 
+## Memoria condivisa (SKAI_ Memory)
+
+Come le altre app SKAI, SKAI per Firefox usa **SKAI_ Memory**, la memoria condivisa da tutte le app SKAI
+(arriva con [sk_notes](https://github.com/Endrx2008/sk_notes)). Prima di rispondere SKAI cerca cosa sanno le
+altre app del tuo messaggio (per esempio un appuntamento visto in sk_mail); dopo la risposta tiene un breve
+appunto dello scambio nelle sue note (`plugins/skaifox/`), che le altre app possono leggere.
+
+Un componente di Firefox non può leggere file da solo, quindi serve il piccolo pacchetto **skaifox-memory**
+(`skaifox-memory_<versione>_all.deb` nella release, `packaging/arch/PKGBUILD` per Arch, oppure
+`sudo sh native/install.sh`): vedi [native/README.md](native/README.md). Per scrivere nella memoria l'utente
+deve essere nel gruppo `skai`. Senza il pacchetto o senza sk_notes il componente funziona come prima.
+
 ## Sviluppo
 
 Per caricare i sorgenti senza impacchettarli: `about:debugging` → **Questo Firefox** → **Carica componente
@@ -46,6 +58,7 @@ aggiuntivo temporaneo** → il `manifest.json` di questo repository.
 
 ```sh
 python3 tools/build_xpi.py      # → dist/skai@skorpion.xpi (non firmato)
+sh tools/build_deb.sh           # → dist/skaifox-memory_<versione>_all.deb
 ```
 
 Firefox normale installa solo componenti firmati da Mozilla: il `.xpi` della release è quello firmato (per
@@ -56,11 +69,14 @@ esempio `npx web-ext sign --channel=unlisted` con le tue chiavi API di addons.mo
 | `manifest.json` | manifest WebExtension (versione 2) |
 | `src/shared/constants.js` | indirizzo di Ollama, tempi di attesa, prompt di sistema, motori di ricerca |
 | `src/shared/ollama.js` | client di Ollama (scelta del modello, streaming) |
+| `src/shared/memory.js` | SKAI_ Memory tramite il programma nativo |
 | `src/background/background.js` | esegue le azioni, tiene la cronologia |
 | `src/content/content.js` | legge le pagine |
 | `src/sidebar/` | la barra laterale |
 | `_locales/en`, `_locales/it` | i testi del componente |
+| `native/` | il programma nativo `skaifox-memory-host` e il suo manifest per Firefox |
 | `tools/build_xpi.py` | crea il `.xpi` |
+| `tools/build_deb.sh`, `packaging/arch/` | creano il pacchetto `skaifox-memory` (Debian / Arch) |
 
 ## Licenza
 

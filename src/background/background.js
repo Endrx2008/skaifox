@@ -91,9 +91,13 @@ async function handleUserMessage(text, pageContext = null) {
     throw err;
   }
   setStatus(STATUS.THINKING);
-  const enrichedText = pageContext
+  let enrichedText = pageContext
     ? `[Current page: "${pageContext.title}" — ${pageContext.url}]\n\n${text}`
     : text;
+  // SKAI_ Memory: what the other SKAI apps know about this message (memory.js; "" without the memory).
+  // Added to this message only, never to the history.
+  const memoryContext = await skaiMemoryRecall(text);
+  if (memoryContext) enrichedText += `\n\n[${memoryContext}]`;
   let streamBuffer = "";
   const onChunk = (chunk, full) => {
     streamBuffer = full;
@@ -114,6 +118,8 @@ async function handleUserMessage(text, pageContext = null) {
   if (state.history.length > 40) state.history = state.history.slice(-40);
   const results = await executeActions(aiResponse);
   setStatus(STATUS.DONE);
+  // Keep the exchange in SKAI_ Memory (in the background: the answer is already on screen).
+  skaiMemoryRemember(text, describeForMemory(aiResponse, results));
   return { aiResponse, results };
 }
 

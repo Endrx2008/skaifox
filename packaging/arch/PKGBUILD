@@ -1,0 +1,20 @@
+# Maintainer: Enrico Miot (EndrX)
+# Build from a checkout of the repository: cd packaging/arch && makepkg -si
+pkgname=skaifox-memory
+pkgver=1.8.0
+pkgrel=1
+pkgdesc="SKAI for Firefox - access to SKAI_ Memory, the memory shared by the SKAI apps"
+arch=('any')
+url="https://github.com/Endrx2008/skaifox"
+license=('GPL-3.0-or-later')
+depends=('python')
+optdepends=('sk-notes: SKAI_ Memory itself (vault, library, write helper)'
+            'firefox: the browser of the add-on')
+
+package() {
+    cd "$startdir/../.."
+    install -Dm755 native/skaifox-memory-host "$pkgdir/usr/lib/skai/skaifox-memory-host"
+    install -Dm644 native/skaifox_memory.json "$pkgdir/usr/lib/mozilla/native-messaging-hosts/skaifox_memory.json"
+    install -Dm644 native/README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

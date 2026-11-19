@@ -1,0 +1,7 @@
+{
+  "name": "skaifox_memory",
+  "description": "SKAI for Firefox: access to SKAI_ Memory, the memory shared by the SKAI apps",
+  "path": "/usr/lib/skai/skaifox-memory-host",
+  "type": "stdio",
+  "allowed_extensions": ["skai@skorpion"]
+}

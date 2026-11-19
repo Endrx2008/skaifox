@@ -1,0 +1,92 @@
+#!/usr/bin/python3
+# Copyright (C) 2026 Enrico Miot (EndrX)
+# Licensed under GNU GPL v3 or later — see the LICENSE file or <https://www.gnu.org/licenses/>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""skaifox-memory-host — lets SKAI for Firefox use SKAI_ Memory, the memory shared by every SKAI app.
+
+Firefox starts this program (native messaging, host name "skaifox_memory") for each message of the add-on
+skai@skorpion and talks to it on stdin/stdout: every message is a 4-byte length (native byte order) followed
+by UTF-8 JSON. One request, one answer, then the program exits.
+
+  {"op": "ping"}                                   -> {"ok": true, "available": bool}
+  {"op": "recall", "query": "..."}                 -> {"ok": true, "available": bool, "text": "..."}
+  {"op": "remember", "question": "...", "reply": "..."} -> {"ok": true, "available": bool, "saved": bool}
+
+The memory itself is the library installed by sk_notes (skai_memory + skai_memory_bridge): reading is plain
+file reading, writing goes through its root-owned helper, which lets this app change only its own notes
+(plugins/skaifox.md and plugins/skaifox/). Without sk_notes, or when the user is not in the group 'skai',
+the answers say so ("available": false / "saved": false) and the add-on simply works without the memory."""
+
+import json
+import struct
+import sys
+import time
+
+APP = "skaifox"
+MAX_IN = 1024 * 1024  # Firefox may send up to 4 GB; SKAI never needs more than this
+
+
+def read_message():
+    raw = sys.stdin.buffer.read(4)
+    if len(raw) < 4:
+        return None
+    (size,) = struct.unpack("=I", raw)
+    if size > MAX_IN:
+        raise ValueError("message too large")
+    return json.loads(sys.stdin.buffer.read(size).decode("utf-8"))
+
+
+def send_message(obj):
+    data = json.dumps(obj, ensure_ascii=False).encode("utf-8")
+    sys.stdout.buffer.write(struct.pack("=I", len(data)) + data)
+    sys.stdout.buffer.flush()
+
+
+def _text(value, limit):
+    return value[:limit] if isinstance(value, str) else ""
+
+
+def handle(req):
+    try:
+        import skai_memory_bridge as bridge
+    except ImportError:
+        return {"ok": True, "available": False, "reason": "SKAI_ Memory is not installed (it comes with sk_notes)"}
+    op = req.get("op") if isinstance(req, dict) else None
+    if op not in ("ping", "recall", "remember"):
+        return {"ok": False, "error": "unknown operation"}
+    mem = bridge.open_memory(APP)
+    if not mem:
+        return {"ok": True, "available": False, "reason": "the SKAI_ Memory vault is missing"}
+    if op == "ping":
+        return {"ok": True, "available": True}
+    if op == "recall":
+        query = _text(req.get("query"), 4000).strip()
+        return {"ok": True, "available": True, "text": bridge.recall_text(mem, query) if query else ""}
+    question, reply = _text(req.get("question"), 4000).strip(), _text(req.get("reply"), 8000).strip()
+    if not question or not reply:
+        return {"ok": True, "available": True, "saved": False}
+    try:  # remember_turn swallows its errors; call the library directly to tell the add-on if it worked
+        mem.remember("chat " + time.strftime("%Y-%m-%d"),
+                     f"**Q:** {question[:600]}\n\n**A:** {reply[:900]}")
+        return {"ok": True, "available": True, "saved": True}
+    except Exception as exc:  # noqa: BLE001 - not in group 'skai', helper missing, ...
+        return {"ok": True, "available": True, "saved": False, "reason": str(exc)[:300]}
+
+
+def main():
+    try:
+        req = read_message()
+    except (ValueError, UnicodeDecodeError) as exc:
+        send_message({"ok": False, "error": f"bad message: {exc}"})
+        return 1
+    if req is None:
+        return 0
+    try:
+        send_message(handle(req))
+    except Exception as exc:  # noqa: BLE001 - never leave Firefox without an answer
+        send_message({"ok": False, "error": str(exc)[:300]})
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
