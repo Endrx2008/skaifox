@@ -1,0 +1,116 @@
+{
+  "extName": {
+    "message": "SKAI"
+  },
+  "extDescription": {
+    "message": "SKAI, l'IA locale di Skorpion OS, in una barra laterale di Firefox: cerca sul web, apre e legge pagine al posto tuo (Ollama, il modello installato con più parametri)."
+  },
+  "actionTitle": {
+    "message": "Apri/chiudi SKAI"
+  },
+  "aiUnavailable": {
+    "message": "Le funzioni IA sono disattivate.\nSembra che tu abbia disattivato l'IA nelle impostazioni di SKAI.\nSenza un modello selezionato, SKAI non può funzionare."
+  },
+  "statusConnecting": {
+    "message": "Connessione a Ollama..."
+  },
+  "newSession": {
+    "message": "Nuova sessione"
+  },
+  "openTabs": {
+    "message": "Schede aperte"
+  },
+  "welcome": {
+    "message": "Ciao, sono SKAI."
+  },
+  "close": {
+    "message": "Chiudi"
+  },
+  "inputPlaceholder": {
+    "message": "Scrivi a SKAI..."
+  },
+  "send": {
+    "message": "Invia (Ctrl+Invio)"
+  },
+  "loading": {
+    "message": "caricamento..."
+  },
+  "sessionResumed": {
+    "message": "Sessione ripresa — $1 scambi precedenti"
+  },
+  "stopped": {
+    "message": "Risposta interrotta"
+  },
+  "searchingFor": {
+    "message": "Cerco: $1"
+  },
+  "tabOpened": {
+    "message": "Scheda aperta: $1"
+  },
+  "pageRead": {
+    "message": "Pagina letta"
+  },
+  "actionError": {
+    "message": "Errore: $1"
+  },
+  "actionWord": {
+    "message": "azione"
+  },
+  "actionFailedOne": {
+    "message": "1 azione non riuscita"
+  },
+  "actionsFailed": {
+    "message": "$1 azioni non riuscite"
+  },
+  "you": {
+    "message": "TU"
+  },
+  "slowStreaming": {
+    "message": "$1 sta ancora scrivendo — fermo da $2 s ($3 s in tutto). Attendo."
+  },
+  "slowWaiting": {
+    "message": "$1 ci sta mettendo molto — $2 s. I modelli grandi chiedono tempo; sto ancora aspettando."
+  },
+  "theModel": {
+    "message": "Il modello"
+  },
+  "stop": {
+    "message": "Interrompi"
+  },
+  "statusReady": {
+    "message": "Pronto"
+  },
+  "statusUnavailable": {
+    "message": "IA non disponibile"
+  },
+  "statusThinking": {
+    "message": "$1 sta pensando..."
+  },
+  "statusSearching": {
+    "message": "Ricerca in corso..."
+  },
+  "statusReading": {
+    "message": "Lettura della pagina..."
+  },
+  "statusDone": {
+    "message": "Fatto"
+  },
+  "statusError": {
+    "message": "Errore"
+  },
+  "closeTabs": {
+    "message": "Chiudi queste schede"
+  },
+  "notUnderstood": {
+    "message": "Non ho capito la richiesta."
+  },
+  "generalTopic": {
+    "message": "generale"
+  },
+  "errUnreachable": {
+    "message": "Ollama non è raggiungibile su localhost:11434"
+  },
+  "errTimeout": {
+    "message": "Timeout: Ollama non risponde"
+  }
+}

@@ -1,44 +1,44 @@
 /* Copyright (C) 2026 Enrico Miot (EndrX)
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
-// === SkAi — COSTANTI GLOBALI (MV2, no export) ===
+// === SKAI for Firefox — global constants (MV2, no modules) ===
 
 const OLLAMA_BASE_URL = "http://localhost:11434";
 
-// 0 = NESSUN timeout sulla generazione: la richiesta non viene mai abortita,
-// il modello può metterci quanto vuole. L'utente viene solo avvisato.
+// 0 = NO timeout on the answer: the request is never aborted, the model may
+// take as long as it needs. The user only gets a notice (and a Stop button).
 const OLLAMA_TIMEOUT  = 0;
 
-// Dopo quanti ms di SILENZIO (nessun token ricevuto) avvisare che è lento.
+// After this many ms of SILENCE (no token received) tell the user it is slow.
 const OLLAMA_SLOW_MS        = 25000;
-// Ogni quanto ripetere l'avviso se continua a non arrivare nulla.
+// Repeat the notice this often while nothing arrives.
 const OLLAMA_SLOW_REPEAT_MS = 30000;
 
-// Timeout delle sole probe rapide (lista modelli / health check): hanno un
-// fallback e non bloccano nulla, ma vanno larghe o Ollama sotto carico
-// (modello pesante in caricamento) risulta erroneamente "non raggiungibile".
+// Timeouts of the quick probes only (model list / health check). Generous,
+// or an Ollama busy loading a big model would look "unreachable".
 const OLLAMA_PROBE_TIMEOUT  = 15000;
 const OLLAMA_HEALTH_TIMEOUT = 10000;
 
 const MAX_AI_TABS     = 10;
 
-// Popolato automaticamente da loadHeaviestModel() all'avvio:
-// legge /api/tags da Ollama e seleziona il modello con size più alta.
-let OLLAMA_MODEL = "qwen2.5:14b";   // fallback se Ollama non è raggiungibile
+// Set at start-up by loadBiggestModel(): the installed model with the most
+// parameters (details.parameter_size of /api/tags), like every SKAI tool.
+// Empty while no model is known.
+let OLLAMA_MODEL = "";
 
 const SYSTEM_PROMPT = `
-Sei SkAi, un agente browser intelligente integrato in Firefox.
-Rispondi SEMPRE e SOLO con un oggetto JSON valido. Mai testo libero.
+You are SKAI, the browser agent of Skorpion OS, built into Firefox.
+ALWAYS answer with ONE valid JSON object and nothing else. Never plain text.
 
-Struttura della risposta:
+Shape of the answer:
 {
   "decision": "chat" | "search" | "navigate" | "multi_search" | "read_page" | "workflow",
-  "reply": "testo da mostrare in chat (se decision=chat)",
-  "actions": [ ... lista di azioni da eseguire ... ],
-  "reasoning": "breve spiegazione del perché hai scelto questa action (max 20 parole)"
+  "reply": "text to show in the chat (when decision is chat)",
+  "actions": [ ... list of actions to run ... ],
+  "reasoning": "why you chose these actions (at most 20 words)"
 }
 
-Tipi di action disponibili:
+Available actions:
 - { "type": "open_tab",   "url": "...", "topic": "..." }
 - { "type": "search",     "query": "...", "engine": "google"|"ddg"|"brave", "topic": "...", "new_tab": true }
 - { "type": "navigate",   "url": "...", "tab_id": null }
@@ -48,12 +48,13 @@ Tipi di action disponibili:
 - { "type": "notify",     "title": "...", "message": "..." }
 - { "type": "workflow",   "steps": [ ...nested actions... ] }
 
-Regole:
-1. Se la domanda richiede info aggiornate o specifiche → usa search o navigate
-2. Se la domanda è concettuale e puoi rispondere → usa chat
-3. Per ricerche complesse → usa multi_search con più tab per argomenti diversi
-4. Apri tab separate per argomenti distinti (mai tutto in una tab)
-5. Il campo "topic" serve come etichetta leggibile per la tab
+Rules:
+1. If the question needs up-to-date or specific information, use search or navigate.
+2. If it is a question you can answer yourself, use chat.
+3. For complex research use multi_search: one search action per subject.
+4. Open separate tabs for separate subjects (never everything in one tab).
+5. "topic" is a short readable label for the tab.
+6. Write "reply" and every text for the user in the language the user writes in.
 `;
 
 const SEARCH_ENGINES = {
@@ -70,3 +71,8 @@ const STATUS = {
   DONE:      "done",
   ERROR:     "error"
 };
+
+// Shorthand for the add-on's translations (_locales/<lang>/messages.json).
+function t(key, ...subs) {
+  return browser.i18n.getMessage(key, subs.map(String)) || key;
+}

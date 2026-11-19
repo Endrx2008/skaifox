@@ -1,11 +1,10 @@
 /* Copyright (C) 2026 Enrico Miot (EndrX)
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
-/* === SkAi SIDEBAR — Design System ===
-   Aesthetic: terminale scuro, tecnico, minimalista
+/* === SKAI for Firefox — sidebar style ===
+   Look: dark terminal, technical, minimal. Only fonts installed on the
+   computer are used: the sidebar never asks a font server for anything.
 */
-
-@import url('https://fonts.googleapis.com/css2?family=Oxanium:wght@300;500;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -24,8 +23,8 @@
   --text-1:     #9aa3af;
   --text-2:     #5a6270;
   --radius:     6px;
-  --font-ui:    'Oxanium', sans-serif;
-  --font-mono:  'JetBrains Mono', monospace;
+  --font-ui:    'Oxanium', 'JetBrains Mono', 'JetBrainsMono Nerd Font', 'Fira Code', sans-serif;
+  --font-mono:  'JetBrains Mono', 'JetBrainsMono Nerd Font', 'Fira Code', monospace;
   --transition: 0.15s ease;
 }
 
@@ -49,7 +48,7 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent-dim); }
 
-/* --- STATUS BAR (ora è la barra in cima, con i controlli) --- */
+/* --- STATUS BAR (the top bar, with the controls) --- */
 .sk-hex-logo {
   flex-shrink: 0;
   animation: pulse-hex 3s ease-in-out infinite;
@@ -375,6 +374,7 @@ body {
   flex-shrink: 0;
 }
 .sk-error-body p {
+  white-space: pre-line;
   font-size: 13px;
   line-height: 1.6;
   color: #e74c3c;

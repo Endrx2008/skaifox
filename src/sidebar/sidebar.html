@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <!-- Copyright (C) 2026 Enrico Miot (EndrX) · SPDX-License-Identifier: GPL-3.0-or-later -->
-<html lang="it">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SkAi</title>
+  <title>SKAI</title>
   <link rel="stylesheet" href="sidebar.css">
 </head>
 <body>
@@ -16,16 +16,16 @@
       <text x="12" y="16" text-anchor="middle" fill="#f0a500" font-size="9" font-family="monospace" font-weight="bold">K</text>
     </svg>
     <span class="sk-status-dot" id="status-dot"></span>
-    <span class="sk-status-text" id="status-text">Connessione ad Ollama...</span>
+    <span class="sk-status-text" id="status-text" data-i18n="statusConnecting">Connecting to Ollama...</span>
     <div class="sk-status-controls">
-      <button class="sk-btn-icon" id="btn-clear" title="Nuova sessione">✕</button>
+      <button class="sk-btn-icon" id="btn-clear" data-i18n-title="newSession" title="New session">✕</button>
     </div>
   </div>
 
   <!-- SESSIONS PANEL -->
   <div class="sk-sessions" id="sessions-panel" style="display:none">
     <div class="sk-sessions-header">
-      <span>Tab aperte</span>
+      <span data-i18n="openTabs">Open tabs</span>
       <span class="sk-sessions-count" id="sessions-count">0</span>
     </div>
     <div class="sk-sessions-list" id="sessions-list"></div>
@@ -34,18 +34,18 @@
   <!-- CHAT AREA -->
   <div class="sk-chat" id="chat-area">
     <div class="sk-welcome" id="welcome-msg">
-      <p>Ciao, sono SkAi.</p>
+      <p data-i18n="welcome">Hi, I'm SKAI.</p>
     </div>
   </div>
 
-  <!-- ERROR OVERLAY — mostrato se nessun modello è disponibile -->
+  <!-- ERROR OVERLAY: shown when Ollama is unreachable or has no model -->
   <div class="sk-error-overlay" id="error-overlay" style="display:none">
-    <button class="sk-error-close" id="error-close" title="Chiudi">✕</button>
+    <button class="sk-error-close" id="error-close" data-i18n-title="close" title="Close">✕</button>
     <div class="sk-error-body">
       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
       </svg>
-      <p>AI features are disabled. It looks like you turned off AI in the skai settings. Without a selected model, skai cannot function.</p>
+      <p data-i18n="aiUnavailable">AI features are disabled. It looks like you turned off AI in the SKAI settings. Without a selected model, SKAI cannot function.</p>
     </div>
   </div>
 
@@ -55,11 +55,12 @@
       <textarea
         class="sk-input"
         id="user-input"
-        placeholder="Scrivi a SkAi..."
+        data-i18n-placeholder="inputPlaceholder"
+        placeholder="Write to SKAI..."
         rows="1"
         autofocus
       ></textarea>
-      <button class="sk-send-btn" id="send-btn" title="Invia (Ctrl+Enter)">
+      <button class="sk-send-btn" id="send-btn" data-i18n-title="send" title="Send (Ctrl+Enter)">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="22" y1="2" x2="11" y2="13"/>
           <polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -67,7 +68,7 @@
       </button>
     </div>
     <div class="sk-input-meta">
-      <span class="sk-model-label" id="model-label">caricamento...</span>
+      <span class="sk-model-label" id="model-label" data-i18n="loading">loading...</span>
       <span class="sk-shortcut">Ctrl+Enter</span>
     </div>
   </div>

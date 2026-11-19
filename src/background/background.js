@@ -1,9 +1,8 @@
 /* Copyright (C) 2026 Enrico Miot (EndrX)
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
-// === SkAi — BACKGROUND SCRIPT (orchestratore) ===
-// Manifest v2 — no ES modules
-// constants.js e ollama.js sono caricati prima di questo file dal manifest
+// === SKAI for Firefox — background script (runs the actions) ===
+// Manifest v2, no ES modules: the manifest loads constants.js and ollama.js first.
 
 const state = {
   history:     [],
@@ -13,7 +12,7 @@ const state = {
 };
 
 // =========================================================
-// TOGGLE SIDEBAR — click sull'icona del plugin
+// TOGGLE SIDEBAR: click on the toolbar button
 // =========================================================
 browser.browserAction.onClicked.addListener(async () => {
   try {
@@ -24,12 +23,17 @@ browser.browserAction.onClicked.addListener(async () => {
 });
 
 // =========================================================
-// INIT — seleziona il modello più pesante, poi verifica Ollama
+// INIT: the AI is ready only when Ollama answers AND has a model
 // =========================================================
+async function refreshAI() {
+  const hasModel = await loadBiggestModel();
+  state.ollamaReady = hasModel && await checkOllamaHealth();
+  return state.ollamaReady;
+}
+
 async function init() {
-  await loadHeaviestModel();
-  state.ollamaReady = await checkOllamaHealth();
-  console.log(`[SkAi] Ollama ${state.ollamaReady ? "✓ online" : "✗ offline"} — modello: ${OLLAMA_MODEL}`);
+  await refreshAI();
+  console.log(`[SKAI] Ollama ${state.ollamaReady ? "✓ ready" : "✗ unavailable"} — model: ${OLLAMA_MODEL || "none"}`);
   broadcastStatus();
 }
 init();
@@ -61,14 +65,11 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       closeSession(msg.topic).then(sendResponse);
       return true;
     case "CHECK_OLLAMA":
-      checkOllamaHealth().then(ok => {
-        state.ollamaReady = ok;
-        sendResponse({ ok });
-      });
+      refreshAI().then(ok => sendResponse({ ok }));
       return true;
     case "RELOAD_MODEL":
-      // Ri-seleziona il modello più pesante (utile se l'utente ha pullato nuovi modelli)
-      loadHeaviestModel().then(() => sendResponse({ model: OLLAMA_MODEL }));
+      // Choose the model again (useful after the user installed another one)
+      refreshAI().then(() => sendResponse({ model: OLLAMA_MODEL }));
       return true;
     case "GET_MODEL":
       sendResponse({ model: OLLAMA_MODEL });
@@ -80,16 +81,18 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 });
 
 // =========================================================
-// GESTIONE MESSAGGI UTENTE
+// USER MESSAGES
 // =========================================================
 async function handleUserMessage(text, pageContext = null) {
-  if (!state.ollamaReady) {
-    state.ollamaReady = await checkOllamaHealth();
-    if (!state.ollamaReady) throw new Error("Ollama non raggiungibile su localhost:11434");
+  if (!state.ollamaReady && !(await refreshAI())) {
+    broadcast({ type: "AI_ERROR", message: t("aiUnavailable"), unavailable: true });
+    const err = new Error(t("aiUnavailable"));
+    err.unavailable = true;
+    throw err;
   }
   setStatus(STATUS.THINKING);
   const enrichedText = pageContext
-    ? `[Pagina corrente: "${pageContext.title}" — ${pageContext.url}]\n\n${text}`
+    ? `[Current page: "${pageContext.title}" — ${pageContext.url}]\n\n${text}`
     : text;
   let streamBuffer = "";
   const onChunk = (chunk, full) => {
@@ -100,9 +103,10 @@ async function handleUserMessage(text, pageContext = null) {
   try {
     aiResponse = await askOllama(enrichedText, state.history, onChunk);
   } catch (err) {
-    const aborted = err.message === "Generazione interrotta";
+    const aborted = Boolean(err.aborted);
+    if (err.unavailable) state.ollamaReady = false;
     setStatus(aborted ? STATUS.IDLE : STATUS.ERROR);
-    broadcast({ type: "AI_ERROR", message: err.message, aborted });
+    broadcast({ type: "AI_ERROR", message: err.message, aborted, unavailable: Boolean(err.unavailable) });
     throw err;
   }
   state.history.push({ role: "user",      content: text });
@@ -144,7 +148,7 @@ async function executeAction(action) {
     case "open_tab": {
       setStatus(STATUS.SEARCHING);
       const tab = await browser.tabs.create({ url: action.url, active: false });
-      registerTabInSession(action.topic ?? "generale", tab.id);
+      registerTabInSession(action.topic ?? t("generalTopic"), tab.id);
       broadcast({ type: "TAB_OPENED", tabId: tab.id, url: action.url, topic: action.topic });
       return { tabId: tab.id };
     }
@@ -176,7 +180,7 @@ async function executeAction(action) {
       const content = await readTabContent(tabId);
       if (action.summarize) {
         const summary = await askOllama(
-          `Riassumi questo contenuto in modo conciso:\n\n${content.text.slice(0, 4000)}`
+          `Summarize this content concisely, in the language of the content:\n\n${content.text.slice(0, 4000)}`
         );
         broadcast({ type: "PAGE_SUMMARY", tabId, summary: summary.reply ?? content.text });
       } else {
@@ -193,7 +197,7 @@ async function executeAction(action) {
       await browser.notifications.create({
         type:    "basic",
         iconUrl: browser.runtime.getURL("icons/skorpion-48.png"),
-        title:   action.title ?? "SkAi",
+        title:   action.title ?? "SKAI",
         message: action.message
       });
       return { notified: true };
@@ -203,7 +207,7 @@ async function executeAction(action) {
       return { steps: action.steps?.length };
 
     default:
-      console.warn(`[SkAi] Action sconosciuta: ${action.type}`);
+      console.warn(`[SKAI] Unknown action: ${action.type}`);
       return { unknown: action.type };
   }
 }

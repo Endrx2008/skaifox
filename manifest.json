@@ -1,9 +1,10 @@
 {
   "manifest_version": 2,
-  "name": "SkAi",
+  "name": "__MSG_extName__",
   "version": "1.6",
-  "description": "AI browser agent via Ollama \u2014 usa automaticamente il modello pi\u00f9 pesante installato \u2014 parte di SkAi",
+  "description": "__MSG_extDescription__",
   "author": "Enrico Miot (EndrX)",
+  "default_locale": "en",
   "icons": {
     "16": "icons/skorpion-16.png",
     "32": "icons/skorpion-32.png",
@@ -35,11 +36,11 @@
       "32": "icons/skorpion-32.png",
       "48": "icons/skorpion-48.png"
     },
-    "default_title": "Apri/Chiudi SkAi"
+    "default_title": "__MSG_actionTitle__"
   },
   "sidebar_action": {
     "default_panel": "src/sidebar/sidebar.html",
-    "default_title": "SkAi",
+    "default_title": "__MSG_extName__",
     "default_icon": {
       "16": "icons/skorpion-16.png",
       "32": "icons/skorpion-32.png",
@@ -65,7 +66,12 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "skai@skorpion",
-      "strict_min_version": "109.0"
+      "strict_min_version": "109.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
     }
   }
 }

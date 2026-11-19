@@ -1,14 +1,32 @@
 /* Copyright (C) 2026 Enrico Miot (EndrX)
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
-// === SkAi — CLIENT OLLAMA (MV2, XMLHttpRequest per bypassare CORS) ===
+// === SKAI for Firefox — Ollama client (MV2, XMLHttpRequest to get past CORS) ===
 
 // =========================================================
-// SELEZIONE AUTOMATICA DEL MODELLO PIÙ PESANTE
-// Chiama /api/tags e ordina per size (byte) discendente.
-// Popola OLLAMA_MODEL con il modello più grande installato.
+// MODEL CHOICE: the installed model with the most parameters
+// (details.parameter_size of /api/tags), like every SKAI tool; the size on
+// disk only breaks ties. Sets OLLAMA_MODEL; resolves true when a model was
+// found, false when Ollama is unreachable or has no model.
 // =========================================================
-function loadHeaviestModel() {
+function parameterCount(model) {
+  const text  = String((model.details && model.details.parameter_size) || "").trim();
+  const match = /^([\d.]+)\s*([kKmMbBtT])?/.exec(text);
+  if (!match) return 0;
+  const mult = { k: 1e3, m: 1e6, b: 1e9, t: 1e12 }[(match[2] || "").toLowerCase()] || 1;
+  return parseFloat(match[1]) * mult;
+}
+
+function pickBiggestModel(models) {
+  if (!models.length) return null;
+  return models.reduce((a, b) => {
+    const pa = parameterCount(a), pb = parameterCount(b);
+    if (pb !== pa) return pb > pa ? b : a;
+    return (b.size || 0) > (a.size || 0) ? b : a;
+  });
+}
+
+function loadBiggestModel() {
   return new Promise((resolve) => {
     const xhr = new XMLHttpRequest();
     xhr.open("GET", OLLAMA_BASE_URL + "/api/tags", true);
@@ -17,37 +35,30 @@ function loadHeaviestModel() {
     xhr.onload = function() {
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
-          const data   = JSON.parse(xhr.responseText);
-          const models = data.models || [];
-
-          if (models.length === 0) {
-            console.warn("[SkAi] Nessun modello trovato in Ollama, uso fallback:", OLLAMA_MODEL);
-            resolve();
+          const models = JSON.parse(xhr.responseText).models || [];
+          const chosen = pickBiggestModel(models);
+          if (!chosen) {
+            console.warn("[SKAI] Ollama has no model installed");
+            OLLAMA_MODEL = "";
+            resolve(false);
             return;
           }
-
-          // Ordina per size (byte) decrescente — il più pesante prima
-          models.sort((a, b) => (b.size || 0) - (a.size || 0));
-
-          const chosen = models[0];
           OLLAMA_MODEL = chosen.name;
-
-          const sizeMB = chosen.size ? (chosen.size / 1024 / 1024).toFixed(0) + " MB" : "dimensione sconosciuta";
-          console.log(`[SkAi] Modello selezionato: ${OLLAMA_MODEL} (${sizeMB})`);
-          console.log("[SkAi] Modelli disponibili:", models.map(m => `${m.name} (${(m.size/1024/1024).toFixed(0)} MB)`).join(", "));
-
-          broadcast({ type: "MODEL_LOADED", model: OLLAMA_MODEL, sizeMB });
+          console.log(`[SKAI] Model: ${OLLAMA_MODEL} (${(chosen.details && chosen.details.parameter_size) || "?"} parameters)`);
+          broadcast({ type: "MODEL_LOADED", model: OLLAMA_MODEL });
+          resolve(true);
+          return;
         } catch(e) {
-          console.warn("[SkAi] Errore parsing /api/tags:", e.message, "— uso fallback:", OLLAMA_MODEL);
+          console.warn("[SKAI] Unreadable /api/tags:", e.message);
         }
       } else {
-        console.warn("[SkAi] /api/tags HTTP", xhr.status, "— uso fallback:", OLLAMA_MODEL);
+        console.warn("[SKAI] /api/tags HTTP", xhr.status);
       }
-      resolve();
+      resolve(false);
     };
 
-    xhr.onerror   = function() { console.warn("[SkAi] Ollama non raggiungibile, uso fallback:", OLLAMA_MODEL); resolve(); };
-    xhr.ontimeout = function() { console.warn("[SkAi] Timeout /api/tags, uso fallback:", OLLAMA_MODEL); resolve(); };
+    xhr.onerror   = function() { console.warn("[SKAI] Ollama unreachable"); resolve(false); };
+    xhr.ontimeout = function() { console.warn("[SKAI] /api/tags timed out"); resolve(false); };
 
     xhr.send();
   });
@@ -56,11 +67,11 @@ function loadHeaviestModel() {
 // =========================================================
 // CHAT
 // =========================================================
-// Richiesta di generazione attualmente in corso (per l'interruzione manuale).
+// The answer being generated now (so that Stop can abort it).
 let currentChatXHR = null;
 
-// Interrompe la generazione in corso — l'unica cosa che può fermare askOllama,
-// visto che non c'è più nessun timeout automatico.
+// Stops the answer being generated: the only thing that stops askOllama,
+// since there is no automatic timeout.
 function abortOllama() {
   if (!currentChatXHR) return false;
   currentChatXHR.abort();
@@ -80,7 +91,7 @@ function askOllama(userMessage, history, onChunk) {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", OLLAMA_BASE_URL + "/api/chat", true);
     xhr.setRequestHeader("Content-Type", "application/json");
-    // 0 → la richiesta non scade mai: aspettiamo il modello quanto serve.
+    // 0 → the request never expires: wait for the model as long as needed.
     xhr.timeout = OLLAMA_TIMEOUT;
 
     currentChatXHR = xhr;
@@ -88,9 +99,9 @@ function askOllama(userMessage, history, onChunk) {
     let rawText = "";
     let lastPos = 0;
 
-    // --- Watchdog "ci sta mettendo molto" -------------------------------
-    // Non interrompe niente: conta solo da quanto tempo non arriva un token
-    // e manda un avviso alla sidebar, ripetendolo finché resta fermo.
+    // --- "It is taking long" watchdog ----------------------------------
+    // Stops nothing: it counts how long no token has arrived and tells the
+    // sidebar, again and again while the model stays silent.
     const startedAt  = Date.now();
     let lastActivity = Date.now();
     let lastNotify   = 0;
@@ -121,7 +132,7 @@ function askOllama(userMessage, history, onChunk) {
     function markActivity() {
       lastActivity = Date.now();
       if (warned) {
-        // Riprende a produrre: togli l'avviso e riarma il watchdog.
+        // Writing again: remove the notice and re-arm the watchdog.
         warned     = false;
         lastNotify = 0;
         broadcast({ type: "AI_SLOW_END" });
@@ -158,18 +169,22 @@ function askOllama(userMessage, history, onChunk) {
 
     xhr.onerror = function() {
       stopWatchdog();
-      reject(new Error("Ollama non raggiungibile su localhost:11434"));
+      const err = new Error(t("errUnreachable"));
+      err.unavailable = true;
+      reject(err);
     };
 
     xhr.onabort = function() {
       stopWatchdog();
-      reject(new Error("Generazione interrotta"));
+      const err = new Error(t("stopped"));
+      err.aborted = true;
+      reject(err);
     };
 
-    // Resta come rete di sicurezza se OLLAMA_TIMEOUT viene rimesso a > 0.
+    // Safety net, in case OLLAMA_TIMEOUT is set above 0 again.
     xhr.ontimeout = function() {
       stopWatchdog();
-      reject(new Error("Timeout: Ollama non risponde"));
+      reject(new Error(t("errTimeout")));
     };
 
     xhr.send(JSON.stringify({
@@ -182,7 +197,7 @@ function askOllama(userMessage, history, onChunk) {
 }
 
 // =========================================================
-// HEALTH CHECK (usato da background.js)
+// HEALTH CHECK (used by background.js)
 // =========================================================
 function checkOllamaHealth() {
   return new Promise((resolve) => {
@@ -197,7 +212,7 @@ function checkOllamaHealth() {
 }
 
 // =========================================================
-// PARSER RISPOSTA AI
+// AI ANSWER PARSER
 // =========================================================
 function parseAIResponse(raw) {
   const text = raw.trim();
@@ -208,7 +223,7 @@ function parseAIResponse(raw) {
   if (braceMatch) { try { return JSON.parse(braceMatch[0]); } catch(e) {} }
   return {
     decision:  "chat",
-    reply:     text || "Non ho capito la richiesta.",
+    reply:     text || t("notUnderstood"),
     actions:   [],
     reasoning: "fallback"
   };

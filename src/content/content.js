@@ -1,18 +1,17 @@
 /* Copyright (C) 2026 Enrico Miot (EndrX)
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
-// === SkAi — CONTENT SCRIPT ===
-// Questo script viene iniettato in ogni pagina visitata.
-// Si occupa di estrarre il contesto della pagina e comunicarlo al background.
+// === SKAI for Firefox — content script ===
+// Injected into every page: reads the page's context for the background script.
 
 (function () {
   "use strict";
 
-  // Evita doppia iniezione
+  // Never inject twice
   if (window.__skaiInjected) return;
   window.__skaiInjected = true;
 
-  // Ascolta richieste dal background script
+  // Requests from the background script
   browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === "GET_PAGE_CONTEXT") {
       sendResponse(getPageContext());
@@ -23,7 +22,7 @@
   });
 
   /**
-   * Estrae il contesto della pagina corrente
+   * Context of the current page
    */
   function getPageContext() {
     return {
@@ -37,11 +36,11 @@
   }
 
   /**
-   * Estrae il testo principale della pagina
-   * Tenta di trovare l'articolo/contenuto principale, altrimenti usa il body
+   * Main text of the page: the article / main content when one is found,
+   * otherwise the whole body
    */
   function extractMainText() {
-    // Prova selettori semantici comuni
+    // Common semantic selectors first
     const candidates = [
       "article", "main", "[role='main']",
       ".content", "#content", ".post-body",
@@ -53,14 +52,14 @@
         return el.innerText.trim().slice(0, 8000);
       }
     }
-    // Fallback: body completo (senza script/style)
+    // Fallback: the whole body (without scripts, styles, navigation)
     const clone = document.body.cloneNode(true);
     clone.querySelectorAll("script,style,nav,footer,header,aside").forEach(e => e.remove());
     return clone.innerText?.trim().slice(0, 8000) ?? "";
   }
 
   /**
-   * Estrae i meta tag rilevanti
+   * The useful meta tags
    */
   function extractMeta() {
     const get = (name) =>
@@ -74,7 +73,7 @@
   }
 
   /**
-   * Estrae i primi N link della pagina
+   * The first n links of the page
    */
   function extractLinks(n = 10) {
     return Array.from(document.querySelectorAll("a[href]"))
@@ -85,15 +84,15 @@
   }
 
   /**
-   * Evidenzia testo nella pagina (usato in futuro per highlight AI)
+   * Highlights text in the page (for future AI highlights)
    */
   function highlightText(query) {
     if (!query) return;
-    // Rimuovi highlight precedenti
+    // Remove earlier highlights
     document.querySelectorAll("mark.skai-hl").forEach(m => {
       m.replaceWith(document.createTextNode(m.textContent));
     });
-    // Highlight nuovi
+    // New highlights
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     const toWrap = [];
     let node;

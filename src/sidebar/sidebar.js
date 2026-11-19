@@ -1,7 +1,16 @@
 /* Copyright (C) 2026 Enrico Miot (EndrX)
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
-// === SkAi — SIDEBAR ===
+// === SKAI for Firefox — sidebar ===
+
+// Texts in Firefox's language (_locales); English when a language is missing.
+function t(key, ...subs) {
+  return browser.i18n.getMessage(key, subs.map(String)) || key;
+}
+document.documentElement.lang = browser.i18n.getUILanguage();
+document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
+document.querySelectorAll("[data-i18n-title]").forEach(el => { el.title = t(el.dataset.i18nTitle); });
+document.querySelectorAll("[data-i18n-placeholder]").forEach(el => { el.placeholder = t(el.dataset.i18nPlaceholder); });
 
 const chatArea      = document.getElementById("chat-area");
 const userInput     = document.getElementById("user-input");
@@ -34,20 +43,26 @@ errorClose.addEventListener("click", () => {
 // INIT
 // =========================================================
 async function init() {
-  const { status, ollamaReady, model } = await browser.runtime.sendMessage({ type: "GET_STATUS" });
+  let { status, ollamaReady, model } = await browser.runtime.sendMessage({ type: "GET_STATUS" });
+  if (!ollamaReady) {
+    // The background may still be starting, or Ollama came up later: check again now.
+    ollamaReady = (await browser.runtime.sendMessage({ type: "CHECK_OLLAMA" })).ok;
+    model = (await browser.runtime.sendMessage({ type: "GET_MODEL" })).model;
+  }
   updateStatusUI(status, ollamaReady);
 
   if (!ollamaReady) {
     showError();
     return;
   }
+  hideError();
 
   if (model) modelLabel.textContent = model;
 
   const { history } = await browser.runtime.sendMessage({ type: "GET_HISTORY" });
   if (history?.length > 0) {
     welcomeMsg.style.display = "none";
-    addSystemNote(`Sessione ripresa — ${history.length / 2} scambi precedenti`);
+    addSystemNote(t("sessionResumed", history.length / 2));
   }
 
   const { sessions } = await browser.runtime.sendMessage({ type: "GET_SESSIONS" });
@@ -56,14 +71,15 @@ async function init() {
 init();
 
 // =========================================================
-// MESSAGGI DAL BACKGROUND
+// MESSAGES FROM THE BACKGROUND SCRIPT
 // =========================================================
 browser.runtime.onMessage.addListener((msg) => {
   switch (msg.type) {
     case "STATUS_CHANGED":
       updateStatusUI(msg.status, msg.ollamaReady);
       if (msg.model) modelLabel.textContent = msg.model;
-      if (!msg.ollamaReady && msg.status === "error") showError();
+      if (msg.ollamaReady) hideError();
+      else if (msg.status === "error") showError();
       break;
     case "MODEL_LOADED":
       modelLabel.textContent = msg.model;
@@ -86,12 +102,13 @@ browser.runtime.onMessage.addListener((msg) => {
     case "AI_ERROR":
       clearSlowNotice();
       if (msg.aborted) {
-        if (streamingBubble) finalizeStreamingBubble("⏹ Generazione interrotta");
-        else addSystemNote("Generazione interrotta");
+        if (streamingBubble) finalizeStreamingBubble("⏹ " + t("stopped"));
+        else addSystemNote(t("stopped"));
         setLoading(false);
         break;
       }
-      if (msg.message && msg.message.includes("non raggiungibile")) {
+      if (msg.unavailable) {
+        if (streamingBubble) finalizeStreamingBubble("");
         showError();
       } else {
         if (streamingBubble) finalizeStreamingBubble(`⚠ ${msg.message}`);
@@ -103,20 +120,20 @@ browser.runtime.onMessage.addListener((msg) => {
       handleActionsDone(msg.results);
       break;
     case "SEARCH_STARTED":
-      addActionPill(`↗ Cerco: ${msg.query}`, "active");
+      addActionPill("↗ " + t("searchingFor", msg.query), "active");
       break;
     case "TAB_OPENED":
-      updateActionPill(`⬡ Tab aperta: ${msg.topic}`, "done");
+      updateActionPill("⬡ " + t("tabOpened", msg.topic ?? ""), "done");
       break;
     case "PAGE_READ":
-      updateActionPill(`✓ Pagina letta`, "done");
+      updateActionPill("✓ " + t("pageRead"), "done");
       break;
     case "PAGE_SUMMARY":
       addMessage("ai", msg.summary);
       setLoading(false);
       break;
     case "ACTION_ERROR":
-      addActionPill(`✕ Errore: ${msg.action?.type ?? "azione"}`, "error");
+      addActionPill("✕ " + t("actionError", msg.action?.type ?? t("actionWord")), "error");
       break;
     case "SESSION_UPDATED":
       updateSessionsUI(msg.sessions);
@@ -125,7 +142,7 @@ browser.runtime.onMessage.addListener((msg) => {
 });
 
 // =========================================================
-// INVIO MESSAGGIO
+// SENDING A MESSAGE
 // =========================================================
 async function sendMessage() {
   const text = userInput.value.trim();
@@ -139,7 +156,7 @@ async function sendMessage() {
   lastActionsRow = null;
   clearSlowNotice();
 
-  // Contesto pagina corrente — MV2 usa tabs.executeScript
+  // Context of the current page (MV2: tabs.executeScript)
   let pageContext = null;
   try {
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
@@ -153,7 +170,7 @@ async function sendMessage() {
       });
       pageContext = results?.[0] ?? null;
     }
-  } catch { /* pagina non accessibile */ }
+  } catch { /* page not readable */ }
 
   streamingBubble = createStreamingBubble();
 
@@ -185,7 +202,7 @@ function createStreamingBubble() {
   meta.className = "sk-message-meta";
   const role = document.createElement("span");
   role.className = "sk-message-role";
-  role.textContent = "SkAi";
+  role.textContent = "SKAI";
   const time = document.createElement("span");
   time.className = "sk-message-time";
   time.textContent = timestamp();
@@ -206,7 +223,7 @@ function createStreamingBubble() {
 function handleStreamChunk(full) {
   if (!streamingBubble) return;
 
-  // Strategia 1: JSON già completo → estrai reply direttamente
+  // Way 1: the JSON is complete → take "reply" from it
   try {
     const parsed = JSON.parse(full.trim());
     if (parsed.reply) {
@@ -216,7 +233,7 @@ function handleStreamChunk(full) {
     }
   } catch (_) {}
 
-  // Strategia 2: JSON parziale ma "reply" già chiuso
+  // Way 2: partial JSON, but "reply" is already closed
   const replyMatch = full.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)"/);
   if (replyMatch) {
     streamingBubble.textContent = replyMatch[1].replace(/\\n/g, "\n").replace(/\\"/g, '"');
@@ -224,7 +241,7 @@ function handleStreamChunk(full) {
     return;
   }
 
-  // Strategia 3: "reply" aperto ma non ancora chiuso (streaming in corso)
+  // Way 3: "reply" open but not closed yet (still streaming)
   const partialReply = full.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)/);
   if (partialReply && partialReply[1].length > 0) {
     streamingBubble.textContent = partialReply[1].replace(/\\n/g, "\n").replace(/\\"/g, '"') + "▌";
@@ -232,7 +249,7 @@ function handleStreamChunk(full) {
     return;
   }
 
-  // Fallback: cursore mentre il modello genera il JSON iniziale
+  // Fallback: a cursor while the model writes the start of the JSON
   streamingBubble.textContent = "▌";
   scrollToBottom();
 }
@@ -247,7 +264,7 @@ function finalizeStreamingBubble(text) {
 }
 
 // =========================================================
-// AZIONI COMPLETATE
+// ACTIONS DONE
 // =========================================================
 function handleActionsDone(results) {
   clearSlowNotice();
@@ -257,7 +274,7 @@ function handleActionsDone(results) {
   });
   const errors = results?.filter(r => !r.ok) ?? [];
   if (errors.length > 0) {
-    addSystemNote(`${errors.length} azione${errors.length > 1 ? "i" : ""} non riuscit${errors.length > 1 ? "e" : "a"}`);
+    addSystemNote(errors.length === 1 ? t("actionFailedOne") : t("actionsFailed", errors.length));
   }
   setLoading(false);
 }
@@ -273,7 +290,7 @@ function addMessage(role, text) {
   meta.className = "sk-message-meta";
   const roleSpan = document.createElement("span");
   roleSpan.className = "sk-message-role";
-  roleSpan.textContent = role === "user" ? "TU" : "SkAi";
+  roleSpan.textContent = role === "user" ? t("you") : "SKAI";
   const timeSpan = document.createElement("span");
   timeSpan.className = "sk-message-time";
   timeSpan.textContent = timestamp();
@@ -299,16 +316,16 @@ function addSystemNote(text) {
 }
 
 // =========================================================
-// AVVISO "CI STA METTENDO MOLTO"
-// Nessun timeout: la generazione prosegue, questa è solo una nota
-// aggiornabile con un pulsante per fermarla a mano se si vuole.
+// "IT IS TAKING LONG" NOTICE
+// No timeout: the answer goes on; this is only a note, updated while it
+// waits, with a button to stop it by hand.
 // =========================================================
 let slowNote = null;
 
 function showSlowNotice(msg) {
   const label = msg.streaming
-    ? `${msg.model ?? "Il modello"} sta ancora generando — fermo da ${msg.idleSec}s (${msg.elapsedSec}s totali). Attendo.`
-    : `${msg.model ?? "Il modello"} ci sta mettendo molto — ${msg.elapsedSec}s. È un modello pesante, sto ancora aspettando.`;
+    ? t("slowStreaming", msg.model || t("theModel"), msg.idleSec, msg.elapsedSec)
+    : t("slowWaiting", msg.model || t("theModel"), msg.elapsedSec);
 
   if (slowNote && chatArea.contains(slowNote)) {
     slowNote.firstChild.textContent = label;
@@ -324,7 +341,7 @@ function showSlowNotice(msg) {
   stopBtn.className = "sk-action-pill error";
   stopBtn.style.cursor     = "pointer";
   stopBtn.style.marginLeft = "8px";
-  stopBtn.textContent = "⏹ Interrompi";
+  stopBtn.textContent = "⏹ " + t("stop");
   stopBtn.addEventListener("click", () => {
     browser.runtime.sendMessage({ type: "STOP_GENERATION" }).catch(() => {});
   });
@@ -369,29 +386,29 @@ function updateStatusUI(status, ollamaReady) {
   statusDot.className = "sk-status-dot";
   switch (status) {
     case "idle":
-      if (ollamaReady) { statusDot.classList.add("online"); statusText.textContent = "Pronto"; }
-      else             { statusDot.classList.add("error");  statusText.textContent = "Ollama non raggiungibile"; }
+      if (ollamaReady) { statusDot.classList.add("online"); statusText.textContent = t("statusReady"); }
+      else             { statusDot.classList.add("error");  statusText.textContent = t("statusUnavailable"); }
       break;
     case "thinking":
       statusDot.classList.add("thinking");
-      statusText.textContent = `${modelLabel.textContent} sta pensando...`;
+      statusText.textContent = t("statusThinking", modelLabel.textContent);
       break;
     case "searching":
       statusDot.classList.add("searching");
-      statusText.textContent = "Ricerca in corso...";
+      statusText.textContent = t("statusSearching");
       break;
     case "reading":
       statusDot.classList.add("searching");
-      statusText.textContent = "Lettura pagina...";
+      statusText.textContent = t("statusReading");
       break;
     case "done":
       statusDot.classList.add("online");
-      statusText.textContent = "Fatto";
+      statusText.textContent = t("statusDone");
       setTimeout(() => updateStatusUI("idle", true), 2000);
       break;
     case "error":
       statusDot.classList.add("error");
-      statusText.textContent = "Errore";
+      statusText.textContent = t("statusError");
       break;
   }
 }
@@ -415,7 +432,7 @@ function updateSessionsUI(sessions) {
 
     const closeSpan = document.createElement("span");
     closeSpan.className = "sk-session-close";
-    closeSpan.title = "Chiudi tab";
+    closeSpan.title = t("closeTabs");
     closeSpan.textContent = "✕";
     closeSpan.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -438,7 +455,7 @@ function setLoading(val) {
 
 function scrollToBottom()  { chatArea.scrollTop = chatArea.scrollHeight; }
 function autoResizeInput() { userInput.style.height = "auto"; userInput.style.height = Math.min(userInput.scrollHeight, 120) + "px"; }
-function timestamp()       { return new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }); }
+function timestamp()       { return new Date().toLocaleTimeString(browser.i18n.getUILanguage(), { hour: "2-digit", minute: "2-digit" }); }
 function escHtml(s)        { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
 document.getElementById("btn-clear").addEventListener("click", async () => {
