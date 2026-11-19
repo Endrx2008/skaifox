@@ -1,3 +1,6 @@
+/* Copyright (C) 2026 Enrico Miot (EndrX)
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
 // === SkAi — CLIENT OLLAMA (MV2, XMLHttpRequest per bypassare CORS) ===
 
 // =========================================================

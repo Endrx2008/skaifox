@@ -3,7 +3,7 @@
   "name": "SkAi",
   "version": "1.6",
   "description": "AI browser agent via Ollama \u2014 usa automaticamente il modello pi\u00f9 pesante installato \u2014 parte di SkAi",
-  "author": "SkAi",
+  "author": "Enrico Miot (EndrX)",
   "icons": {
     "16": "icons/skorpion-16.png",
     "32": "icons/skorpion-32.png",

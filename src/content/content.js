@@ -1,3 +1,6 @@
+/* Copyright (C) 2026 Enrico Miot (EndrX)
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
 // === SkAi — CONTENT SCRIPT ===
 // Questo script viene iniettato in ogni pagina visitata.
 // Si occupa di estrarre il contesto della pagina e comunicarlo al background.

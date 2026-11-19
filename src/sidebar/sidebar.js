@@ -1,3 +1,6 @@
+/* Copyright (C) 2026 Enrico Miot (EndrX)
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
 // === SkAi — SIDEBAR ===
 
 const chatArea      = document.getElementById("chat-area");

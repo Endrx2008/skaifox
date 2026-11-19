@@ -1,3 +1,6 @@
+/* Copyright (C) 2026 Enrico Miot (EndrX)
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
 // === SkAi — BACKGROUND SCRIPT (orchestratore) ===
 // Manifest v2 — no ES modules
 // constants.js e ollama.js sono caricati prima di questo file dal manifest

@@ -1,3 +1,6 @@
+/* Copyright (C) 2026 Enrico Miot (EndrX)
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
 // === SkAi — COSTANTI GLOBALI (MV2, no export) ===
 
 const OLLAMA_BASE_URL = "http://localhost:11434";
