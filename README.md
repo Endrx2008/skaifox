@@ -1,124 +1,65 @@
-# SkAi — Firefox Plugin
+# skaifox — SKAI for Firefox
 
-Firefox plugin with an integrated AI agent via Ollama (Qwen2.5).
-Part of the **SkAi** project.
+A Firefox add-on of [Skorpion OS](https://github.com/Endrx2008/skorpion_os): **SKAI** in a sidebar that
+can search the web, open and read pages and run small workflows of tabs for you.
+*Italiano: [README.it.md](README.it.md).*
 
----
+## Install
 
-## Project structure
+Download `skai@skorpion.xpi` from the [latest release](https://github.com/Endrx2008/skaifox/releases/latest)
+(signed by Mozilla), then in Firefox open **Add-ons and themes → gear icon → Install Add-on From File**
+and select it. Needs Firefox 109 or newer.
 
-```
-skai-firefox/
-├── manifest.json                  ← WebExtension Manifest v2
-├── icons/
-│   ├── skorpion-16.png
-│   ├── skorpion-32.png
-│   ├── skorpion-48.png
-│   ├── skorpion-96.png
-│   └── skorpion-128.png
-└── src/
-    ├── shared/
-    │   ├── constants.js           ← Global constants, system prompt, config
-    │   └── ollama.js              ← REST client for Ollama (streaming)
-    ├── background/
-    │   └── background.js          ← Orchestrator — handles sidebar toggle and actions
-    ├── content/
-    │   └── content.js             ← Injected into every page
-    └── sidebar/
-        ├── sidebar.html           ← Sidebar UI
-        ├── sidebar.css            ← SkAi design
-        └── sidebar.js             ← Sidebar logic
-```
-
----
-
-## Requirements
-
-1. **Firefox 109+** (Manifest v2 + sidebar_action support)
-2. **Ollama** installed and running
-3. **Qwen2.5 model** downloaded:
-   ```bash
-   ollama pull qwen2.5:14b
-   ```
-   *(or `qwen2.5:7b` for less powerful machines)*
-4. Ollama must run on `localhost:11434` (default)
-   - In SkAi this is handled automatically
-
----
-
-## Installation (development)
-
-1. Open Firefox and go to `about:debugging`
-2. Click **"This Firefox"**
-3. Click **"Load Temporary Add-on"**
-4. Select this project's `manifest.json` file
-
-### Opening/closing the sidebar
-- **Click the icon** 🦂 in the toolbar → opens or closes the sidebar
-- Or: `View > Sidebar > SkAi`
-
----
+Open or close the sidebar with the 🦂 button in the toolbar, or **View → Sidebar → SKAI**. The
+sidebar speaks Firefox's language (English or Italian); SKAI answers in the language you write in.
 
 ## How it works
 
-### Main flow
+You write in the sidebar; SKAI answers with a JSON action that the add-on checks and runs:
 
-```
-User types → Sidebar.js → Background.js → Ollama (Qwen2.5)
-                                 ↓
-                        JSON action response
-                                 ↓
-                       Action Router (switch)
-                                 ↓
-          ┌──────────────────────────────────┐
-          │  reply_chat  search  open_tab     │
-          │  navigate    read_page  workflow  │
-          └──────────────────────────────────┘
-```
+| Action | Does |
+|---|---|
+| `reply_chat` | answers in the chat |
+| `search` | searches Google, DuckDuckGo or Brave in a new tab |
+| `open_tab` / `navigate` | opens a site in a new tab / in the current one |
+| `read_page` | reads and summarises a page |
+| `close_tab` | closes the tabs of a topic |
+| `notify` | shows a notification |
+| `workflow` | several of the above, one after the other |
 
-### JSON Actions
+Tabs opened by SKAI are grouped by topic (at most 10).
 
-Ollama always replies with a structured JSON:
+## SKAI
 
-```json
-{
-  "decision": "search",
-  "reply": null,
-  "actions": [
-    {
-      "type": "search",
-      "query": "Linux kernel 6.8 release notes",
-      "engine": "ddg",
-      "topic": "linux-kernel",
-      "new_tab": true,
-      "read_after": true
-    }
-  ],
-  "reasoning": "Searching for up-to-date info on the kernel"
-}
+The add-on talks to the local Ollama (`http://localhost:11434`) and uses the installed model with the most
+parameters. Without Ollama or a model the sidebar shows the same "AI features are disabled" message as
+every SKAI tool. There is no time limit on an answer: a slow model only gets a notice and a **Stop** button.
+Nothing leaves the computer except the searches and pages you or SKAI open. In Skorpion OS Ollama and its
+model come from the SKAI setup wizard, and SKAI Manager (Alt + F9) changes them.
+
+## Development
+
+Load the source without packing it: `about:debugging` → **This Firefox** → **Load Temporary Add-on** →
+`manifest.json` of this repository.
+
+```sh
+python3 tools/build_xpi.py      # → dist/skai@skorpion.xpi (unsigned)
 ```
 
-### Supported action types
+Regular Firefox installs only add-ons signed by Mozilla: the release `.xpi` is the signed one (for
+example `npx web-ext sign --channel=unlisted` with your addons.mozilla.org API keys).
 
-| Action           | Description                              |
-|------------------|------------------------------------------|
-| `reply_chat`     | Replies directly in chat                 |
-| `search`         | Searches the web (Google/DDG/Brave)      |
-| `open_tab`       | Opens a URL in a new tab                 |
-| `navigate`       | Navigates in the current tab             |
-| `read_page`      | Reads/summarizes a page                  |
-| `close_tab`      | Closes the tabs of a topic               |
-| `notify`         | Browser notification                     |
-| `workflow`       | List of nested actions (pipeline)        |
+| Path | What it is |
+|---|---|
+| `manifest.json` | WebExtension manifest (version 2) |
+| `src/shared/constants.js` | Ollama address, timeouts, system prompt, search engines |
+| `src/shared/ollama.js` | Ollama client (model choice, streaming) |
+| `src/background/background.js` | runs the actions, keeps the history |
+| `src/content/content.js` | reads the pages |
+| `src/sidebar/` | the sidebar |
+| `_locales/en`, `_locales/it` | the texts of the add-on |
+| `tools/build_xpi.py` | builds the `.xpi` |
 
----
+## License
 
-## Advanced configuration
-
-Edit `src/shared/constants.js` to:
-- Change the model (`OLLAMA_MODEL`)
-- Change the Ollama port (`OLLAMA_BASE_URL`)
-- Customize the system prompt (`SYSTEM_PROMPT`)
-- Add search engines (`SEARCH_ENGINES`)
-
----
+GPL-3.0-or-later, see [LICENSE](LICENSE). © 2026 Enrico Miot (EndrX), founder and maintainer of Skorpion OS.
