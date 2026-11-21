@@ -110,6 +110,12 @@
   "errUnreachable": {
     "message": "Ollama non è raggiungibile su localhost:11434"
   },
+  "errReadPage": {
+    "message": "Non è stato possibile leggere la pagina (vuota, o una pagina che Firefox non lascia leggere ai componenti aggiuntivi)."
+  },
+  "errNoQuery": {
+    "message": "La ricerca non ha parole da cercare."
+  },
   "errTimeout": {
     "message": "Timeout: Ollama non risponde"
   }

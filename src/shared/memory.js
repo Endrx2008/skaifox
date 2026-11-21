@@ -45,18 +45,44 @@ async function skaiMemoryRemember(question, reply) {
   return Boolean(answer && answer.saved);
 }
 
-/** What SKAI did, in words, for the memory: the reply, or the actions it ran. */
+/** What SKAI did, in words, for the memory: the reply, and every action with what it really produced
+ *  (pages read are kept with their title, link and summary, searches and tabs with their link). */
 function describeForMemory(aiResp, results) {
   const parts = [];
   if (aiResp.reply) parts.push(String(aiResp.reply));
   for (const r of results || []) {
     const a = r.action || {};
+    const res = r.result || {};
     if (a.type === "reply_chat") {
       if (a.text && a.text !== aiResp.reply) parts.push(String(a.text));
       continue;
     }
+    if (!r.ok) {
+      parts.push(`${a.type} failed: ${r.error || "unknown error"}`);
+      continue;
+    }
+    if (a.type === "workflow") {
+      const inner = describeForMemory({}, res.steps);
+      if (inner) parts.push(inner);
+      continue;
+    }
+    if (a.type === "read_page") {
+      const link = res.url ? `[${res.title || res.url}](${res.url})` : (res.title || "the current tab");
+      const text = res.summary ? `\nSummary: ${res.summary}` : (res.excerpt ? `\nExcerpt: ${res.excerpt}` : "");
+      parts.push(`Read the page ${link}${text}`);
+      continue;
+    }
+    if (a.type === "search") {
+      parts.push(`Searched "${a.query}"` + (res.url ? `: ${res.url}` : ""));
+      continue;
+    }
+    if (a.type === "open_tab" || a.type === "navigate") {
+      const url = res.url || a.url || "";
+      parts.push(`${a.type === "open_tab" ? "Opened" : "Went to"} ${a.topic ? `"${a.topic}" ` : ""}${url}`.trim());
+      continue;
+    }
     const what = a.query ? `"${a.query}"` : (a.url || a.topic || a.title || "");
-    parts.push(`${a.type}${what ? " " + what : ""}${r.ok ? "" : " (failed)"}`);
+    parts.push(`${a.type}${what ? " " + what : ""}`);
   }
   return parts.join("\n").trim();
 }

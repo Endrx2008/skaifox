@@ -153,16 +153,16 @@ async function executeAction(action) {
 
     case "open_tab": {
       setStatus(STATUS.SEARCHING);
-      const tab = await browser.tabs.create({ url: action.url, active: false });
+      const url = webUrl(action.url, action.engine);
+      const tab = await browser.tabs.create({ url, active: false });
       registerTabInSession(action.topic ?? t("generalTopic"), tab.id);
-      broadcast({ type: "TAB_OPENED", tabId: tab.id, url: action.url, topic: action.topic });
-      return { tabId: tab.id };
+      broadcast({ type: "TAB_OPENED", tabId: tab.id, url, topic: action.topic });
+      return { tabId: tab.id, url };
     }
 
     case "search": {
       setStatus(STATUS.SEARCHING);
-      const engine = SEARCH_ENGINES[action.engine ?? "ddg"];
-      const url    = engine + encodeURIComponent(action.query);
+      const url    = searchUrl(action.query, action.engine);
       const tab    = await browser.tabs.create({ url, active: false });
       registerTabInSession(action.topic ?? action.query, tab.id);
       broadcast({ type: "SEARCH_STARTED", query: action.query, tabId: tab.id, topic: action.topic });
@@ -176,23 +176,28 @@ async function executeAction(action) {
 
     case "navigate": {
       const tabId = action.tab_id ?? (await getActiveTabId());
-      await browser.tabs.update(tabId, { url: action.url });
-      return { tabId, url: action.url };
+      const url   = webUrl(action.url, action.engine);
+      await browser.tabs.update(tabId, { url });
+      return { tabId, url };
     }
 
     case "read_page": {
       setStatus(STATUS.READING);
       const tabId   = action.tab_id ?? (await getActiveTabId());
       const content = await readTabContent(tabId);
+      const page    = { tabId, title: content.title || "", url: content.url || "", length: content.text?.length ?? 0 };
+      if (!content.text) throw new Error(t("errReadPage"));
       if (action.summarize) {
-        const summary = await askOllama(
+        const answer = await askOllama(
           `Summarize this content concisely, in the language of the content:\n\n${content.text.slice(0, 4000)}`
         );
-        broadcast({ type: "PAGE_SUMMARY", tabId, summary: summary.reply ?? content.text });
+        page.summary = summaryText(answer) || content.text.slice(0, 1500);
+        broadcast({ type: "PAGE_SUMMARY", tabId, summary: page.summary });
       } else {
+        page.excerpt = content.text.replace(/\s+/g, " ").trim().slice(0, 600);
         broadcast({ type: "PAGE_READ", tabId, content });
       }
-      return { tabId, length: content.text?.length };
+      return page;
     }
 
     case "close_tab":
@@ -208,9 +213,13 @@ async function executeAction(action) {
       });
       return { notified: true };
 
-    case "workflow":
-      for (const step of action.steps ?? []) await executeAction(step);
-      return { steps: action.steps?.length };
+    case "workflow": {
+      const steps = [];
+      for (const step of action.steps ?? []) {
+        steps.push({ action: step, result: await executeAction(step), ok: true });
+      }
+      return { steps };
+    }
 
     default:
       console.warn(`[SKAI] Unknown action: ${action.type}`);
@@ -267,6 +276,32 @@ async function readTabContent(tabId) {
   } catch {
     return { title: "", url: "", text: "" };
   }
+}
+
+/** The search page for `query` on `engine` (unknown or missing engine: the default one, never "undefined..."). */
+function searchUrl(query, engine) {
+  const q = String(query ?? "").trim();
+  if (!q) throw new Error(t("errNoQuery"));
+  const name = String(engine ?? "").trim().toLowerCase();
+  const key  = SEARCH_ENGINES[name] ? name : (SEARCH_ENGINE_ALIASES[name] ?? DEFAULT_SEARCH_ENGINE);
+  return SEARCH_ENGINES[key] + encodeURIComponent(q);
+}
+
+/** A URL a tab can open: http(s) as given, "example.org/x" with https://, anything else searched for. */
+function webUrl(url, engine) {
+  const u = String(url ?? "").trim();
+  if (/^https?:\/\//i.test(u)) return u;
+  if (/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?(\/\S*)?$/i.test(u)) return "http://" + u;
+  if (/^[\w-]+(\.[\w-]+)+(:\d+)?(\/\S*)?$/.test(u)) return "https://" + u;
+  return searchUrl(u, engine);
+}
+
+/** The text of a summary answer: models reply in "reply", in a reply_chat action, or not in JSON at all. */
+function summaryText(answer) {
+  if (!answer) return "";
+  if (answer.reply) return String(answer.reply);
+  const chat = (answer.actions || []).find(a => a && a.type === "reply_chat" && a.text);
+  return chat ? String(chat.text) : "";
 }
 
 function setStatus(s) { state.status = s; broadcastStatus(); }

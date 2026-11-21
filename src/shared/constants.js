@@ -62,6 +62,12 @@ const SEARCH_ENGINES = {
   ddg:    "https://duckduckgo.com/?q=",
   brave:  "https://search.brave.com/search?q="
 };
+const DEFAULT_SEARCH_ENGINE = "ddg";
+// Names models use for the same engines.
+const SEARCH_ENGINE_ALIASES = {
+  duckduckgo: "ddg", "duck duck go": "ddg", duck: "ddg",
+  "google.com": "google", "brave search": "brave", "search.brave.com": "brave", "duckduckgo.com": "ddg"
+};
 
 const STATUS = {
   IDLE:      "idle",
